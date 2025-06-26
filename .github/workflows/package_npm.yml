@@ -74,6 +74,7 @@ jobs:
           # Actualizar package.json con scope y registry
           npm pkg set name="@fabipm/customer-app_Poma"
           npm pkg set publishConfig.registry="https://npm.pkg.github.com/"
+          npm pkg delete private
           BASE_VERSION=$(node -p "require('./package.json').version")
           npm version "${BASE_VERSION}-build.${{ github.run_number }}" --no-git-tag-version
 
@@ -152,6 +153,7 @@ jobs:
           # Actualizar package.json con scope y registry
           npm pkg set name="@fabipm/notifications_Poma"
           npm pkg set publishConfig.registry="https://npm.pkg.github.com/"
+          npm pkg delete private
           BASE_VERSION=$(node -p "require('./package.json').version")
           npm version "${BASE_VERSION}-build.${{ github.run_number }}" --no-git-tag-version
 
