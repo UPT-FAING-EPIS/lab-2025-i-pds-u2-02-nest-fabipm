@@ -6,22 +6,22 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-scan-publish-customer-app:
+  build-scan-publish:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    env:
-      SONAR_PROJECT_KEY: "fabipm_customer-app-poma"
-      SONAR_ORG: "fabipm"
-      PACKAGE_NAME: "customer-app_poma" # Corregido a minúsculas
-      GITHUB_SCOPE: "fabipm"
+
+    strategy:
+      matrix:
+        app: [customer-app, notifications]
+
     steps:
       # --- Paso 1: Checkout ---
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Necesario para SonarCloud
 
       # --- Paso 2: Setup Node.js ---
       - name: Setup Node.js
@@ -29,134 +29,64 @@ jobs:
         with:
           node-version: '21.x'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@${{ env.GITHUB_SCOPE }}'
+          scope: '@UPT-FAING-EPIS' # Scope de la organización
 
-      # --- Paso 3: Dependencias y pruebas Customer App ---
-      - name: Install dependencies
-        working-directory: ./customer-app
+      # --- Paso 3: Instalar dependencias y probar ---
+      - name: Install dependencies for ${{ matrix.app }}
+        working-directory: ./${{ matrix.app }}
         run: npm ci
 
-      - name: Run tests
-        working-directory: ./customer-app
+      - name: Run tests for ${{ matrix.app }}
+        working-directory: ./${{ matrix.app }}
         run: npm test -- --coverage
 
-      # --- Paso 4: Análisis SonarCloud Customer App ---
-      - name: SonarCloud Scan Customer App
+      # --- Paso 4: Análisis SonarCloud ---
+      - name: SonarCloud Scan for ${{ matrix.app }}
         uses: SonarSource/sonarqube-scan-action@v5.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.organization=${{ env.SONAR_ORG }}
-            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
-            -Dsonar.projectName=${{ env.PACKAGE_NAME }}
+            -Dsonar.organization=fabipm
+            -Dsonar.projectKey=fabipm_${{ matrix.app }}-poma
+            -Dsonar.projectName=${{ matrix.app }}_poma
             -Dsonar.projectVersion=1.0
-            -Dsonar.sources=./customer-app/libs/domain/src
-            -Dsonar.javascript.lcov.reportPaths=./customer-app/coverage/lcov.info
-            -Dsonar.typescript.lcov.reportPaths=./customer-app/coverage/lcov.info
+            -Dsonar.sources=./${{ matrix.app }}/libs/domain/src
+            -Dsonar.javascript.lcov.reportPaths=./${{ matrix.app }}/coverage/lcov.info
+            -Dsonar.typescript.lcov.reportPaths=./${{ matrix.app }}/coverage/lcov.info
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.scm.provider=git
             -Dsonar.branch.name=main
 
-      # --- Paso 5: Construcción Customer App ---
-      - name: Build library
-        working-directory: ./customer-app
-        run: npm run build domain
-
-      - name: Copy package.json to dist
-        run: cp ./customer-app/package.json ./customer-app/dist/libs/domain/package.json
-
-      - name: Set pre-release version
-        working-directory: ./customer-app/dist/libs/domain
+      # --- Paso 5: Construir, versionar y publicar ---
+      - name: Build and Publish ${{ matrix.app }}
+        working-directory: ./${{ matrix.app }}
         run: |
-          npm pkg set name="@fabipm/customer-app_poma" # Corregido a minúsculas
+          # Construir la librería
+          npm run build domain
+
+          # Copiar el package.json a la carpeta de distribución
+          cp ./package.json ./dist/libs/domain/package.json
+
+          # Entrar a la carpeta de distribución para publicar
+          cd ./dist/libs/domain
+
+          # Establecer el nombre del paquete con el scope de la organización
+          npm pkg set name="@UPT-FAING-EPIS/${{ matrix.app }}_poma"
+          
+          # Asegurar que el registro es el de GitHub
           npm pkg set publishConfig.registry="https://npm.pkg.github.com/"
+          
+          # Eliminar la propiedad "private" si existe
           npm pkg delete private
+
+          # Crear la versión con el número de build
           BASE_VERSION=$(node -p "require('./package.json').version")
           npm version "${BASE_VERSION}-build.${{ github.run_number }}" --no-git-tag-version
 
-      - name: Publish customer-app package to GitHub Packages
-        working-directory: ./customer-app/dist/libs/domain
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-
-  test-scan-publish-notifications:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    env:
-      SONAR_PROJECT_KEY: "fabipm_notifications-poma"
-      SONAR_ORG: "fabipm"
-      PACKAGE_NAME: "notifications_poma" # Corregido a minúsculas
-      GITHUB_SCOPE: "fabipm"
-    steps:
-      # --- Paso 1: Checkout ---
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # --- Paso 2: Setup Node.js ---
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '21.x'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@${{ env.GITHUB_SCOPE }}'
-
-      # --- Paso 3: Dependencias y pruebas Notifications ---
-      - name: Install dependencies
-        working-directory: ./notifications
-        run: npm ci
-
-      - name: Run tests
-        working-directory: ./notifications
-        run: npm test -- --coverage
-
-
-      # --- Paso 4: Análisis SonarCloud Notifications ---
-      - name: SonarCloud Scan Notifications
-        uses: SonarSource/sonarqube-scan-action@v5.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.organization=${{ env.SONAR_ORG }}
-            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
-            -Dsonar.projectName=${{ env.PACKAGE_NAME }}
-            -Dsonar.projectVersion=1.0
-            -Dsonar.sources=./notifications/libs/domain/src
-            -Dsonar.javascript.lcov.reportPaths=./notifications/coverage/lcov.info
-            -Dsonar.typescript.lcov.reportPaths=./notifications/coverage/lcov.info
-            -Dsonar.sourceEncoding=UTF-8
-            -Dsonar.host.url=https://sonarcloud.io
-            -Dsonar.scm.provider=git
-            -Dsonar.branch.name=main
-
-      # --- Paso 5: Construcción Notifications ---
-      - name: Build library
-        working-directory: ./notifications
-        run: npm run build domain
-
-      - name: Copy package.json to dist
-        run: cp ./notifications/package.json ./notifications/dist/libs/domain/package.json
-
-      - name: Set pre-release version
-        working-directory: ./notifications/dist/libs/domain
-        run: |
-          npm pkg set name="@fabipm/notifications_poma" # Corregido a minúsculas
-          npm pkg set publishConfig.registry="https://npm.pkg.github.com/"
-          npm pkg delete private
-          BASE_VERSION=$(node -p "require('./package.json').version")
-          npm version "${BASE_VERSION}-build.${{ github.run_number }}" --no-git-tag-version
-
-      - name: Publish notifications package to GitHub Packages
-        working-directory: ./notifications/dist/libs/domain
-        run: npm publish
+          # Publicar el paquete
+          npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
