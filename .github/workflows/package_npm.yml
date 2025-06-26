@@ -71,13 +71,15 @@ jobs:
       - name: Set pre-release version
         working-directory: ./customer-app/dist/libs/domain
         run: |
+          # Actualizar package.json con scope y registry
+          npm pkg set name="@fabipm/customer-app_Poma"
+          npm pkg set publishConfig.registry="https://npm.pkg.github.com/"
           BASE_VERSION=$(node -p "require('./package.json').version")
           npm version "${BASE_VERSION}-build.${{ github.run_number }}" --no-git-tag-version
 
-      # --- Paso 6: Publicación Customer App ---
       - name: Publish customer-app package to GitHub Packages
         working-directory: ./customer-app/dist/libs/domain
-        run: npm publish --access public
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
@@ -147,12 +149,14 @@ jobs:
       - name: Set pre-release version
         working-directory: ./notifications/dist/libs/domain
         run: |
+          # Actualizar package.json con scope y registry
+          npm pkg set name="@fabipm/notifications_Poma"
+          npm pkg set publishConfig.registry="https://npm.pkg.github.com/"
           BASE_VERSION=$(node -p "require('./package.json').version")
           npm version "${BASE_VERSION}-build.${{ github.run_number }}" --no-git-tag-version
 
-      # --- Paso 6: Publicación Notifications ---
       - name: Publish notifications package to GitHub Packages
         working-directory: ./notifications/dist/libs/domain
-        run: npm publish --access public
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}

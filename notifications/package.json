@@ -1,5 +1,5 @@
 {
-  "name": "notifications",
+  "name": "@fabipm/notifications_Poma",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -76,5 +76,12 @@
     "moduleNameMapper": {
       "^@app/domain(|/.*)$": "<rootDir>/libs/domain/src/$1"
     }
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fabipm/lab-2025-i-pds-u2-02-nest-fabipm.git"
   }
 }
