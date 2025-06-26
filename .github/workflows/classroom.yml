@@ -64,7 +64,7 @@ jobs:
       with:
         test-name: t6
         setup-command: ''
-        command: cat .github/workflows/package_nuget.yml | grep nuget
+        command: cat .github/workflows/package_npm.yml | grep npm
         timeout: 10
         max-score: 4
     - name: t7
