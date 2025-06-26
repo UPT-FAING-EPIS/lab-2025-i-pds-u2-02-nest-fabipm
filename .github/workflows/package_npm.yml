@@ -23,6 +23,7 @@ jobs:
         with:
           fetch-depth: 0  # Necesario para SonarCloud
 
+
       # --- Paso 2: Setup Node.js ---
       - name: Setup Node.js
         uses: actions/setup-node@v4
