@@ -1,0 +1,114 @@
+name: Test, Scan and Publish NPM Packages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  SONAR_ORG: "fabipm"
+  GITHUB_SCOPE: "fabipm"
+
+jobs:
+  test-scan-publish-customer-app:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      # --- Paso 1: Checkout ---
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Necesario para SonarCloud
+
+      # --- Paso 2: Setup Node.js ---
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21.x'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@${{ env.GITHUB_SCOPE }}'
+
+      # --- Paso 3: Dependencias y pruebas Customer App ---
+      - name: Install dependencies
+        working-directory: ./customer-app
+        run: npm ci
+
+      - name: Run tests
+        working-directory: ./customer-app
+        run: npm test -- --coverage
+
+      # --- Paso 4: Análisis SonarCloud Customer App ---
+      - name: SonarCloud Scan Customer App
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_02 }}
+        with:
+          args: >
+            -Dsonar.organization=${{ env.SONAR_ORG }}
+            -Dsonar.projectKey=fabipm_customer-app-poma
+            -Dsonar.projectName=customer-app_Poma
+            -Dsonar.projectVersion=1.0
+            -Dsonar.sources=./customer-app/libs/domain/src
+            -Dsonar.javascript.lcov.reportPaths=./customer-app/coverage/lcov.info
+            -Dsonar.typescript.lcov.reportPaths=./customer-app/coverage/lcov.info
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.scm.provider=git
+            -Dsonar.branch.name=main
+
+      # --- Paso 5: Construcción Customer App ---
+      - name: Build library
+        working-directory: ./customer-app
+        run: npm run build domain
+
+      - name: Copy package.json to dist
+        run: cp ./customer-app/package.json ./customer-app/dist/libs/domain/package.json
+
+      - name: Set pre-release version
+        working-directory: ./customer-app/dist/libs/domain
+        run: |
+          BASE_VERSION=$(node -p "require('./package.json').version")
+          npm version "${BASE_VERSION}-build.${{ github.run_number }}" --no-git-tag-version
+
+      # --- Paso 6: Publicación Customer App ---
+      - name: Publish customer-app package to GitHub Packages
+        working-directory: ./customer-app/dist/libs/domain
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+
+  test-scan-publish-notifications:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      # --- Paso 1: Checkout ---
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Necesario para SonarCloud
+
+      # --- Paso 2: Setup Node.js ---
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21.x'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@${{ env.GITHUB_SCOPE }}'
+
+      # --- Paso 3: Dependencias y pruebas Notifications ---
+      - name: Install dependencies
+        working-directory: ./notifications
+        run: npm ci
+
+      - name: Run tests
+        working-directory: ./notifications
+        run: npm test -- --coverage
+
+      # --- Paso 4: Análisis SonarCloud Notifications ---
+      - name: SonarCloud Scan Notifications
+        uses: SonarSource/sonarqube-scan
