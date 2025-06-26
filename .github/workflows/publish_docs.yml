@@ -1,0 +1,116 @@
+name: Publish Documentation to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21.x'
+          cache: 'npm'
+
+      - name: Install customer-app dependencies
+        working-directory: ./customer-app
+        run: |
+          npm ci
+          npm install @compodoc/compodoc@1.1.19 --save-dev
+
+      - name: Install notifications dependencies
+        working-directory: ./notifications
+        run: |
+          npm ci
+          npm install @compodoc/compodoc@1.1.19 --save-dev
+
+      - name: Generate customer-app documentation
+        working-directory: ./customer-app
+        run: npx @compodoc/compodoc -p tsconfig.json -d documentation --hideGenerator
+
+      - name: Generate notifications documentation
+        working-directory: ./notifications
+        run: npx @compodoc/compodoc -p tsconfig.json -d documentation --hideGenerator
+
+      - name: Create combined documentation structure
+        run: |
+          mkdir -p ./combined-docs
+          cp -r ./customer-app/documentation/* ./combined-docs/
+          mkdir -p ./combined-docs/notifications
+          cp -r ./notifications/documentation/* ./combined-docs/notifications/
+
+      - name: Create index page for combined docs
+        run: |
+          cat > ./combined-docs/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Project Documentation</title>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 40px; }
+                  .project { margin: 20px 0; padding: 20px; border: 1px solid #ddd; }
+                  a { text-decoration: none; color: #0366d6; }
+              </style>
+          </head>
+          <body>
+              <h1>Project Documentation</h1>
+              <div class="project">
+                  <h2><a href="./customer-app/">Customer App Documentation</a></h2>
+                  <p>Documentation for the Customer App project</p>
+              </div>
+              <div class="project">
+                  <h2><a href="./notifications/">Notifications Documentation</a></h2>
+                  <p>Documentation for the Notifications project</p>
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Organize documentation structure
+        run: |
+          mkdir -p ./combined-docs/customer-app
+          mkdir -p ./combined-docs/notifications
+          cp -r ./customer-app/documentation/* ./combined-docs/customer-app/
+          cp -r ./notifications/documentation/* ./combined-docs/notifications/
+
+      - name: Add .nojekyll file
+        run: touch ./combined-docs/.nojekyll
+
+      - name: Verify documentation files
+        run: |
+          ls -la ./combined-docs/
+          ls -la ./combined-docs/customer-app/
+          ls -la ./combined-docs/notifications/
+          [ -f ./combined-docs/index.html ] || exit 1
+          [ -f ./combined-docs/customer-app/index.html ] || exit 1
+          [ -f ./combined-docs/notifications/index.html ] || exit 1
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: './combined-docs'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
