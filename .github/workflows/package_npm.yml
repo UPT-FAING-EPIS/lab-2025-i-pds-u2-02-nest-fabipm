@@ -12,7 +12,7 @@ jobs:
       contents: read
       packages: write
     env:
-      SONAR_PROJECT_KEY: "fabipm_customer-app_Poma"
+      SONAR_PROJECT_KEY: "fabipm_customer-app-poma"
       SONAR_ORG: "fabipm"
       PACKAGE_NAME: "customer-app_Poma"
       GITHUB_SCOPE: "fabipm"
@@ -87,7 +87,7 @@ jobs:
       contents: read
       packages: write
     env:
-      SONAR_PROJECT_KEY: "fabipm_notifications_poma"
+      SONAR_PROJECT_KEY: "fabipm_notifications-poma"
       SONAR_ORG: "fabipm"
       PACKAGE_NAME: "notifications_Poma"
       GITHUB_SCOPE: "fabipm"
