@@ -116,6 +116,7 @@ jobs:
         working-directory: ./notifications
         run: npm test -- --coverage
 
+
       # --- Paso 4: Análisis SonarCloud Notifications ---
       - name: SonarCloud Scan Notifications
         uses: SonarSource/sonarqube-scan-action@v5.0.0
