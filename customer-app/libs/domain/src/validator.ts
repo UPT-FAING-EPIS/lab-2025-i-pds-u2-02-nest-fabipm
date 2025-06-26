@@ -8,6 +8,7 @@ export class Validator {
         if (typeof customer.Email === 'string' && customer.Email.trim().length === 0) throw new Error("Email can't be null or empty");
         if (typeof customer.MobileNumber === 'string' && customer.MobileNumber.trim().length === 0) throw new Error("MobileNumber can't be null or empty");
         if (typeof customer.Address === 'string' && customer.Address.trim().length === 0) throw new Error("Address can't be null or empty");
+        if (typeof customer.Password === 'string' && customer.Password.trim().length < 8) throw new Error("Password must be at least 8 characters long");
         return true;
     }    
 }
